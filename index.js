@@ -1,16 +1,28 @@
 const { Client, GatewayIntentBits } = require("discord.js");
+const http = require("http");
 
+// ─── Render Web Service: open port immediately so deploy succeeds ─────────────
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => res.end("ok")).listen(PORT, () => {
+  console.log(`HTTP server listening on port ${PORT} — Render is happy ✓`);
+});
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+const TOKEN = process.env.DISCORD_TOKEN;
+const TARGET_ROLE_NAME = process.env.TARGET_ROLE_NAME || "Member";
+
+if (!TOKEN) {
+  console.error("ERROR: DISCORD_TOKEN is not set. Add it to your Render env vars.");
+  process.exit(1);
+}
+
+// ─── Discord Client ───────────────────────────────────────────────────────────
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
   ],
 });
-
-// ─── Config ───────────────────────────────────────────────────────────────────
-// Set these in your Render environment variables
-const TOKEN = process.env.DISCORD_TOKEN;
-const TARGET_ROLE_NAME = process.env.TARGET_ROLE_NAME || "Member"; // Role whose members get renamed
 
 // ─── Gen Z Coded Nicknames ────────────────────────────────────────────────────
 const nicknames = [
@@ -36,12 +48,10 @@ function randomNickname() {
 
 // ─── Core Logic ───────────────────────────────────────────────────────────────
 async function randomizeNicknamesInGuild(guild) {
-  console.log(`[${guild.name}] Fetching members...`);
+  console.log(`\n[${guild.name}] Fetching members...`);
 
-  // Fetch all members
   const members = await guild.members.fetch();
 
-  // Find target role
   const role = guild.roles.cache.find(
     (r) => r.name.toLowerCase() === TARGET_ROLE_NAME.toLowerCase()
   );
@@ -51,10 +61,7 @@ async function randomizeNicknamesInGuild(guild) {
     return;
   }
 
-  // Filter members with that role (skip bots)
-  const targets = members.filter(
-    (m) => m.roles.cache.has(role.id) && !m.user.bot
-  );
+  const targets = members.filter((m) => m.roles.cache.has(role.id) && !m.user.bot);
 
   console.log(`[${guild.name}] Found ${targets.size} member(s) with role "${role.name}". Renaming...`);
 
@@ -67,52 +74,27 @@ async function randomizeNicknamesInGuild(guild) {
       await member.setNickname(nick, "Nickname randomizer on deploy");
       console.log(`  ✓ ${member.user.tag} → ${nick}`);
       success++;
-      // Small delay to avoid rate limits
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500)); // avoid rate limits
     } catch (err) {
       console.warn(`  ✗ ${member.user.tag} — ${err.message}`);
       failed++;
     }
   }
 
-  console.log(`[${guild.name}] Done. ${success} renamed, ${failed} failed (likely missing permissions or owner).`);
+  console.log(`[${guild.name}] Done! ${success} renamed, ${failed} failed.\n`);
 }
 
 // ─── Bot Events ───────────────────────────────────────────────────────────────
 client.once("ready", async () => {
-  console.log(`Logged in as ${client.user.tag}`);
-  console.log(`Target role: "${TARGET_ROLE_NAME}"`);
+  console.log(`\n✅ Bot online as ${client.user.tag}`);
+  console.log(`🎯 Target role: "${TARGET_ROLE_NAME}"`);
 
-  // Run for every guild the bot is in
   for (const [, guild] of client.guilds.cache) {
     await randomizeNicknamesInGuild(guild);
   }
 
-  console.log("All guilds processed. Bot will stay online.");
+  console.log("✅ All done. Bot is staying online.");
 });
 
-// Optional: slash command to re-trigger manually
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-  if (interaction.commandName !== "randomize") return;
-
-  if (!interaction.memberPermissions.has("ManageNicknames")) {
-    return interaction.reply({ content: "You need Manage Nicknames permission.", ephemeral: true });
-  }
-
-  await interaction.reply("Randomizing nicknames... check console for progress.");
-  await randomizeNicknamesInGuild(interaction.guild);
-});
-
-// ─── Fake HTTP server to satisfy Render's free tier ──────────────────────────
-const http = require("http");
-http.createServer((req, res) => res.end("ok")).listen(process.env.PORT || 3000);
-
-// ─── Start ────────────────────────────────────────────────────────────────────
-if (!TOKEN) {
-  console.error("ERROR: DISCORD_TOKEN environment variable is not set.");
-  process.exit(1);
-}
-
+// ─── Login ────────────────────────────────────────────────────────────────────
 client.login(TOKEN);
- 
