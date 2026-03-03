@@ -1,0 +1,16 @@
+{
+  "name": "nickname-randomizer-bot",
+  "version": "1.0.0",
+  "description": "Discord bot that randomizes nicknames for users with a specific role",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.15.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
