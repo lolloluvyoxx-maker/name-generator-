@@ -11,6 +11,9 @@ http.createServer((req, res) => res.end("ok")).listen(PORT, () => {
 const TOKEN = process.env.DISCORD_TOKEN;
 const TARGET_ROLE_NAME = process.env.TARGET_ROLE_NAME || "Member";
 
+console.log(`TOKEN loaded: ${TOKEN ? "✓ (length: " + TOKEN.length + ")" : "✗ MISSING"}`);
+console.log(`TARGET_ROLE_NAME: "${TARGET_ROLE_NAME}"`);
+
 if (!TOKEN) {
   console.error("ERROR: DISCORD_TOKEN is not set. Add it to your Render env vars.");
   process.exit(1);
@@ -23,6 +26,10 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
   ],
 });
+
+client.on("debug", (msg) => console.log(`[debug] ${msg}`));
+client.on("warn", (msg) => console.warn(`[warn] ${msg}`));
+client.on("error", (err) => console.error(`[error] ${err.message}`));
 
 // ─── Gen Z Coded Nicknames ────────────────────────────────────────────────────
 const nicknames = [
@@ -62,7 +69,6 @@ async function randomizeNicknamesInGuild(guild) {
   }
 
   const targets = members.filter((m) => m.roles.cache.has(role.id) && !m.user.bot);
-
   console.log(`[${guild.name}] Found ${targets.size} member(s) with role "${role.name}". Renaming...`);
 
   let success = 0;
@@ -74,7 +80,7 @@ async function randomizeNicknamesInGuild(guild) {
       await member.setNickname(nick, "Nickname randomizer on deploy");
       console.log(`  ✓ ${member.user.tag} → ${nick}`);
       success++;
-      await new Promise((r) => setTimeout(r, 500)); // avoid rate limits
+      await new Promise((r) => setTimeout(r, 500));
     } catch (err) {
       console.warn(`  ✗ ${member.user.tag} — ${err.message}`);
       failed++;
@@ -97,4 +103,10 @@ client.once("ready", async () => {
 });
 
 // ─── Login ────────────────────────────────────────────────────────────────────
-client.login(TOKEN);
+console.log("Attempting Discord login...");
+client.login(TOKEN).then(() => {
+  console.log("Login call succeeded.");
+}).catch((err) => {
+  console.error(`Login FAILED: ${err.message}`);
+  process.exit(1);
+});
