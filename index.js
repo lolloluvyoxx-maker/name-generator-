@@ -104,6 +104,10 @@ client.on("interactionCreate", async (interaction) => {
   await randomizeNicknamesInGuild(interaction.guild);
 });
 
+// ─── Fake HTTP server to satisfy Render's free tier ──────────────────────────
+const http = require("http");
+http.createServer((req, res) => res.end("ok")).listen(process.env.PORT || 3000);
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 if (!TOKEN) {
   console.error("ERROR: DISCORD_TOKEN environment variable is not set.");
@@ -111,4 +115,4 @@ if (!TOKEN) {
 }
 
 client.login(TOKEN);
-    
+ 
